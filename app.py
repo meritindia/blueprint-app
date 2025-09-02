@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 from io import BytesIO
-from fpdf import FPDF
 import base64
 
 st.set_page_config(page_title="Assessment Blueprint Generator", layout="wide")
@@ -72,7 +71,7 @@ Renal and Genitourinary, 101
 Endocrine Disorders, 83
 Rheumatology and Connective Tissue, 34""")
 
-unit_rows = [row.strip().split(',') for row in unit_data.strip().split('\n') if row.strip()]
+unit_rows = [row.strip().split(',') for row in unit_data.strip().split('\n') if row.strip() and len(row.strip().split(',')) == 2]
 unit_df = pd.DataFrame(unit_rows, columns=["Unit", "IxF"])
 unit_df["IxF"] = unit_df["IxF"].astype(float)
 unit_df["Weightage %"] = round((unit_df["IxF"] / unit_df["IxF"].sum()) * 100)
@@ -85,53 +84,29 @@ grid_template = pd.DataFrame(index=unit_df["Unit"], columns=[
     "SAQ-R", "SAQ-U", "SAQ-A",
     "LAQ-R", "LAQ-U", "LAQ-A"
 ])
-grid_template = grid_template.fillna(0)
-grid_template = grid_template.infer_objects(copy=False).astype(int)
-
-edited_grid = st.data_editor(grid_template, use_container_width=True, key="grid_editor")
+grid_template.fillna(0, inplace=True)
+edited_grid = st.data_editor(grid_template.astype(int), use_container_width=True, key="grid_editor")
 
 # Calculations
+total_row = edited_grid.sum().to_frame().T
 unit_totals = edited_grid.sum(axis=1)
 blueprint_df = pd.concat([unit_df, edited_grid], axis=1)
-blueprint_df["Grid Total"] = unit_totals
+blueprint_df["Grid Total"] = unit_totals.values
 
-total_row = edited_grid.sum().to_frame().T
-styled_df = pd.concat([blueprint_df, total_row.rename(index={0: "Total"})])
+# Display Final Table
 st.subheader("Generated Blueprint Table")
-st.dataframe(styled_df.style.format("{:.0f}"), use_container_width=True)
+styled_df = pd.concat([blueprint_df, total_row.rename(index={0: "Total"})])
+
+# Fix: Format only numeric columns
+formatted_df = styled_df.style.format({col: "{:.0f}" for col in styled_df.select_dtypes(include=['number']).columns})
+st.dataframe(formatted_df, use_container_width=True)
 
 # CSV Download
 def convert_df_csv(df):
     return df.to_csv(index=False).encode('utf-8')
 
 csv_data = convert_df_csv(blueprint_df)
-st.download_button("\U0001F4C5 Download as CSV", csv_data, "blueprint_grid.csv", "text/csv")
-
-# PDF Download
-st.subheader("\U0001F4C4 Export to PDF")
-def export_to_pdf(df):
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=10)
-    pdf.add_page()
-    pdf.set_font("Arial", size=8)
-    cell_widths = [40] + [18] * (len(df.columns) - 1)
-    row_height = 8
-
-    for i, col in enumerate(df.columns):
-        pdf.cell(cell_widths[i], row_height, str(col)[:15], border=1, align='C')
-    pdf.ln(row_height)
-
-    for _, row in df.iterrows():
-        for i, val in enumerate(row):
-            pdf.cell(cell_widths[i], row_height, str(val), border=1, align='C')
-        pdf.ln(row_height)
-
-    output = BytesIO()
-    pdf.output(output)
-    b64 = base64.b64encode(output.getvalue()).decode()
-    return f'<a href="data:application/octet-stream;base64,{b64}" download="blueprint_grid.pdf">\U0001F4C5 Download as PDF</a>'
-
-st.markdown(export_to_pdf(blueprint_df), unsafe_allow_html=True)
+st.download_button("📥 Download as CSV", csv_data, "blueprint_grid.csv", "text/csv")
 
 # Footer
 st.markdown("---")
