@@ -71,7 +71,7 @@ Renal and Genitourinary, 101
 Endocrine Disorders, 83
 Rheumatology and Connective Tissue, 34""")
 
-unit_rows = [row.strip().split(',') for row in unit_data.strip().split('\n') if row.strip() and len(row.strip().split(',')) == 2]
+unit_rows = [row.strip().split(',') for row in unit_data.strip().split('\n') if ',' in row]
 unit_df = pd.DataFrame(unit_rows, columns=["Unit", "IxF"])
 unit_df["IxF"] = unit_df["IxF"].astype(float)
 unit_df["Weightage %"] = round((unit_df["IxF"] / unit_df["IxF"].sum()) * 100)
@@ -84,28 +84,27 @@ grid_template = pd.DataFrame(index=unit_df["Unit"], columns=[
     "SAQ-R", "SAQ-U", "SAQ-A",
     "LAQ-R", "LAQ-U", "LAQ-A"
 ])
-grid_template.fillna(0, inplace=True)
-edited_grid = st.data_editor(grid_template.astype(int), use_container_width=True, key="grid_editor")
+grid_template = grid_template.fillna(0).astype(int)
+edited_grid = st.data_editor(grid_template, use_container_width=True, key="grid_editor")
 
 # Calculations
 total_row = edited_grid.sum().to_frame().T
 unit_totals = edited_grid.sum(axis=1)
-blueprint_df = pd.concat([unit_df, edited_grid], axis=1)
-blueprint_df["Grid Total"] = unit_totals.values
+
+# Align index properly before assigning
+unit_totals = unit_totals.reindex(unit_df["Unit"])
+blueprint_df = pd.concat([unit_df.set_index("Unit"), edited_grid], axis=1)
+blueprint_df["Grid Total"] = unit_totals
 
 # Display Final Table
 st.subheader("Generated Blueprint Table")
-styled_df = pd.concat([blueprint_df, total_row.rename(index={0: "Total"})])
-
-# Fix: Format only numeric columns
-formatted_df = styled_df.style.format({col: "{:.0f}" for col in styled_df.select_dtypes(include=['number']).columns})
-st.dataframe(formatted_df, use_container_width=True)
+st.dataframe(blueprint_df.reset_index(), use_container_width=True)
 
 # CSV Download
 def convert_df_csv(df):
     return df.to_csv(index=False).encode('utf-8')
 
-csv_data = convert_df_csv(blueprint_df)
+csv_data = convert_df_csv(blueprint_df.reset_index())
 st.download_button("📥 Download as CSV", csv_data, "blueprint_grid.csv", "text/csv")
 
 # Footer
