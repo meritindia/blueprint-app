@@ -35,16 +35,8 @@ mcq_marks = round(mcq_pct * total_marks / 100)
 saq_marks = round(saq_pct * total_marks / 100)
 laq_marks = round(laq_pct * total_marks / 100)
 
-section_df = pd.DataFrame({
-    "Section": ["MCQ", "SAQ", "LAQ"],
-    "% Weightage": [mcq_pct, saq_pct, laq_pct],
-    "Marks Allocated": [mcq_marks, saq_marks, laq_marks]
-})
-st.dataframe(section_df, use_container_width=True)
-
 # Step 3: Cognitive Domain Distribution (%)
 st.subheader("Step 3: Cognitive Domain Distribution (%) for Each Question Type")
-
 cd_perc = {}
 cd_marks = {}
 
@@ -72,68 +64,69 @@ Renal and Genitourinary, 101
 Endocrine Disorders, 83
 Rheumatology and Connective Tissue, 34""")
 
-unit_rows = [row.strip().split(',') for row in unit_data.strip().split('\n') if row.strip()]
+unit_rows = [row.strip().split(',') for row in unit_data.strip().split('\n') if row.strip() and len(row.strip().split(',')) == 2]
 unit_df = pd.DataFrame(unit_rows, columns=["Unit", "IxF"])
 unit_df["IxF"] = unit_df["IxF"].astype(float)
 unit_df["Weightage %"] = round((unit_df["IxF"] / unit_df["IxF"].sum()) * 100)
 unit_df["Marks"] = round((unit_df["Weightage %"] / 100) * total_marks)
 
-# Step 6: Faculty Grid Entry
-st.subheader("Step 6: Manual Grid Entry")
-grid_template = pd.DataFrame(index=unit_df["Unit"], columns=[
-    "MCQ-R", "MCQ-U", "MCQ-A",
-    "SAQ-R", "SAQ-U", "SAQ-A",
-    "LAQ-R", "LAQ-U", "LAQ-A"
-])
-grid_template = grid_template.fillna(0).astype(int)
-edited_grid = st.data_editor(grid_template, use_container_width=True, key="grid_editor")
+# Step 6: Combined Grid Entry (Unit + Grid)
+st.subheader("Step 6: Combined Grid Entry")
+combined_grid = pd.DataFrame(unit_df)
 
-# Calculations
-total_row = edited_grid.sum().to_frame().T
-unit_totals = edited_grid.sum(axis=1)
+for col in ["MCQ-R", "MCQ-U", "MCQ-A", "SAQ-R", "SAQ-U", "SAQ-A", "LAQ-R", "LAQ-U", "LAQ-A"]:
+    combined_grid[col] = 0
 
-# Merged Blueprint Table
-blueprint_df = pd.concat([unit_df.set_index("Unit"), edited_grid], axis=1)
-blueprint_df["Grid Total"] = unit_totals
-blueprint_df.reset_index(inplace=True)
+editable_grid = st.data_editor(combined_grid, use_container_width=True, key="combined_editor")
+
+# Compute Totals
+grid_columns = ["MCQ-R", "MCQ-U", "MCQ-A", "SAQ-R", "SAQ-U", "SAQ-A", "LAQ-R", "LAQ-U", "LAQ-A"]
+editable_grid["Grid Total"] = editable_grid[grid_columns].sum(axis=1)
+
+total_row = editable_grid[grid_columns + ["Grid Total"]].sum().to_frame().T
+final_df = pd.concat([editable_grid, total_row.rename(index={0: "Total"})], ignore_index=False)
 
 # Display Final Table
 st.subheader("Generated Blueprint Table (Combined View)")
-st.dataframe(blueprint_df, use_container_width=True)
+st.dataframe(final_df, use_container_width=True)
 
 # CSV Download
 def convert_df_csv(df):
     return df.to_csv(index=False).encode('utf-8')
 
-csv_data = convert_df_csv(blueprint_df)
+csv_data = convert_df_csv(editable_grid)
 st.download_button("📥 Download as CSV", csv_data, "blueprint_grid.csv", "text/csv")
 
-# PDF Download
-st.subheader("📄 Export to PDF")
+# PDF Export
 def export_to_pdf(df):
     pdf = FPDF(orientation='L', unit='mm', format='A4')
     pdf.add_page()
     pdf.set_font("Arial", size=7)
-    col_width = 277 / len(df.columns)  # full width of A4 in landscape
-    row_height = 6
+
+    col_widths = [max(len(str(cell)) for cell in df[col].astype(str)) * 2.5 for col in df.columns]
+    row_height = 8
 
     # Header
-    for col in df.columns:
-        pdf.cell(col_width, row_height, str(col), border=1)
+    for i, col in enumerate(df.columns):
+        width = col_widths[i] if col_widths[i] < 35 else 35
+        pdf.cell(width, row_height, str(col), border=1, align='C')
     pdf.ln(row_height)
 
-    # Rows
+    # Data Rows
     for _, row in df.iterrows():
-        for item in row:
-            pdf.cell(col_width, row_height, str(item), border=1)
+        for i, val in enumerate(row):
+            width = col_widths[i] if col_widths[i] < 35 else 35
+            pdf.cell(width, row_height, str(val), border=1, align='C')
         pdf.ln(row_height)
 
     output = BytesIO()
-    pdf.output(output)
-    b64 = base64.b64encode(output.getvalue()).decode()
-    return f'<a href="data:application/octet-stream;base64,{b64}" download="blueprint_grid.pdf">📥 Download as PDF</a>'
+    pdf.output(output, dest='F')
+    pdf_bytes = output.getvalue()
+    b64 = base64.b64encode(pdf_bytes).decode()
+    href = f'<a href="data:application/octet-stream;base64,{b64}" download="blueprint_grid.pdf">📄 Download as PDF</a>'
+    return href
 
-st.markdown(export_to_pdf(blueprint_df), unsafe_allow_html=True)
+st.markdown(export_to_pdf(editable_grid), unsafe_allow_html=True)
 
 # Footer
 st.markdown("---")
