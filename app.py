@@ -10,7 +10,7 @@ with col1:
     st.image("logo.jpg", width=100)
 with col2:
     st.markdown("<h1 style='font-size:36px; color:#004466;'>Blueprint Generator - MERIT India</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='font-size:18px; color:#444;'>A powerful tool to ensure balanced assessment design in medical education</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size:18px; color:#444;'>A tool to ensure balanced assessment design in medical education</p>", unsafe_allow_html=True)
 
 # Support
 st.markdown("<p style='font-size:14px; color:#666;'>For queries, contact: <a href='mailto:support@meritindia.org'>support@meritindia.org</a></p>", unsafe_allow_html=True)
@@ -20,8 +20,8 @@ st.markdown("---")
 st.markdown("## Step 1: Total Marks for Theory Paper")
 total_marks = st.number_input("Enter Total Marks", min_value=1, value=100)
 
-# ---------- Step 2: Section-wise Distribution ----------
-st.markdown("## Step 2: Section-wise Distribution (%) ")
+# ---------- Step 2: Question Type Distribution ----------
+st.markdown("## Step 2: Question Type Distribution (%) ")
 section_input = st.text_area("Paste section data (e.g., MCQ, 30)", value="MCQ, 30\nSAQ, 30\nLAQ, 40")
 
 try:
@@ -48,8 +48,8 @@ try:
 except:
     st.warning("Please enter valid cognitive domain distribution data.")
 
-# ---------- Step 4: Derived Cognitive Matrix (in Marks) ----------
-st.markdown("## Step 4: Derived Cognitive Matrix (in Marks)")
+# ---------- Step 4: Marks Distribution: Domain and Question Type Wise ----------
+st.markdown("## Step 4: Marks Distribution: Domain and Question Type Wise")
 try:
     cog_matrix = pd.DataFrame(index=['Recall', 'Understand', 'Apply'], columns=['MCQ', 'SAQ', 'LAQ'])
     section_marks_dict = dict(zip(section_df["Section"], section_df["Marks Allocated"]))
