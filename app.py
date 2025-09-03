@@ -10,16 +10,11 @@ col1, col2 = st.columns([1, 10])
 with col1:
     st.image("logo.jpg", width=80)
 with col2:
-    st.markdown("""
-        <h1 style='font-size: 36px;'>Blueprint Generator - MERIT India</h1>
-        <p style='font-size: 16px; color: gray;'>Blueprints are essential for mapping assessments to curriculum objectives in medical education.</p>
-        <p style='font-size: 14px; color: #999;'>Support: <a href='mailto:support@meritindia.org'>support@meritindia.org</a></p>
-    """, unsafe_allow_html=True)
+    st.title("Blueprint Generator - MERIT India")
 
 st.markdown("""
-<hr>
-<p style='font-size: 18px;'>This app helps you build a subject-wise assessment blueprint. Define section-wise weightage, cognitive domain splits, and manually enter distribution in a single unified grid.</p>
-""", unsafe_allow_html=True)
+This app helps you build a subject-wise assessment blueprint. Define section-wise weightage, cognitive domain splits, and manually enter distribution.
+""")
 
 # Step 1: Total Marks
 st.subheader("Step 1: Total Marks for Theory Paper")
@@ -44,7 +39,7 @@ st.subheader("Step 3: Cognitive Domain Distribution (%) for Each Question Type")
 cd_perc = {}
 cd_marks = {}
 for sec, sec_marks in zip(["MCQ", "SAQ", "LAQ"], [mcq_marks, saq_marks, laq_marks]):
-    st.markdown(f"<b>{sec} Distribution</b>", unsafe_allow_html=True)
+    st.markdown(f"**{sec} Distribution**")
     col1, col2, col3 = st.columns(3)
     with col1:
         r = st.number_input(f"Recall % in {sec}", value=30, key=f"r_{sec}")
@@ -75,10 +70,11 @@ grid_cols = [f"{sec}-{dom}" for sec in ["MCQ", "SAQ", "LAQ"] for dom in ["R", "U
 grid_data = pd.DataFrame(index=unit_df["Unit"], columns=grid_cols)
 grid_data = grid_data.fillna(0).astype(int)
 
+# Merge with unit info for editable grid
 full_grid = pd.concat([unit_df.set_index("Unit"), grid_data], axis=1)
 full_grid = st.data_editor(full_grid, use_container_width=True, key="editable_grid")
 
-# Step 6: Grid Totals
+# Step 6: Add Grid Total
 full_grid["Grid Total"] = full_grid[grid_cols].sum(axis=1)
 
 # Display Final Table
@@ -99,13 +95,19 @@ def export_to_pdf(df):
     pdf.add_page()
     pdf.set_font("Arial", size=8)
 
-    col_widths = [min(max(df[col].astype(str).apply(len).max(), len(str(col))) * 2.5, 35) for col in df.columns]
+    # Set dynamic widths (clip max width per col)
+    col_widths = []
+    for col in df.columns:
+        max_content_width = max(df[col].astype(str).apply(len).max(), len(str(col)))
+        col_widths.append(min(max_content_width * 2.5, 35))  # max width 35
     row_height = 8
 
+    # Header
     for i, col in enumerate(df.columns):
         pdf.cell(col_widths[i], row_height, str(col)[:20], border=1, align='C')
     pdf.ln(row_height)
 
+    # Rows
     for _, row in df.iterrows():
         for i, val in enumerate(row):
             pdf.cell(col_widths[i], row_height, str(val), border=1, align='C')
@@ -113,14 +115,12 @@ def export_to_pdf(df):
 
     pdf_output = pdf.output(dest='S').encode('latin-1')
     b64 = base64.b64encode(pdf_output).decode('utf-8')
-    return f'<a href="data:application/pdf;base64,{b64}" download="blueprint_grid.pdf">📥 Download as PDF</a>'
+    link = f'<a href="data:application/pdf;base64,{b64}" download="blueprint_grid.pdf">📥 Download as PDF</a>'
+    return link
 
 st.subheader("📄 Export to PDF")
 st.markdown(export_to_pdf(full_grid.reset_index()), unsafe_allow_html=True)
 
 # Footer
-st.markdown("""
----
-<p style='font-size: 13px; text-align: center;'>Made by <b>MERIT India</b> | Logo © All rights reserved | Contact: <a href='mailto:support@meritindia.org'>support@meritindia.org</a></p>
-<p style='font-size: 12px; text-align: center;'>Reference: National Medical Council guidelines on assessment blueprinting (NMC 2023)</p>
-""", unsafe_allow_html=True)
+st.markdown("---")
+st.markdown("Made by **MERIT India** | Logo © All rights reserved")
