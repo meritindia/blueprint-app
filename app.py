@@ -35,7 +35,7 @@ except:
     st.warning("Please enter valid section-wise distribution data.")
 
 # ---------- Step 3: Cognitive Domain Distribution ----------
-st.markdown("## Step 3: Cognitive Domain Distribution (%) for Each Question Type")
+st.markdown("<h2 style='font-size:26px;'>Step 3: Cognitive Domain Distribution (%) for Each Question Type</h2>", unsafe_allow_html=True)
 cognitive_input = st.text_area("Paste cognitive distribution data (e.g., Recall in MCQ, 30)", 
     value="""Recall in MCQ, 30\nUnderstand in MCQ, 30\nApply in MCQ, 40\nRecall in SAQ, 30\nUnderstand in SAQ, 30\nApply in SAQ, 40\nRecall in LAQ, 30\nUnderstand in LAQ, 30\nApply in LAQ, 40""")
 
@@ -49,7 +49,7 @@ except:
     st.warning("Please enter valid cognitive domain distribution data.")
 
 # ---------- Step 4: Marks Distribution: Domain and Question Type Wise ----------
-st.markdown("## Step 4: Marks Distribution: Domain and Question Type Wise")
+st.markdown("<h2 style='font-size:26px;'>Step 4: Marks Distribution: Domain and Question Type Wise</h2>", unsafe_allow_html=True)
 try:
     cog_matrix = pd.DataFrame(index=['Recall', 'Understand', 'Apply'], columns=['MCQ', 'SAQ', 'LAQ'])
     section_marks_dict = dict(zip(section_df["Section"], section_df["Marks Allocated"]))
@@ -67,7 +67,7 @@ except:
     st.warning("Cognitive Matrix generation failed.")
 
 # ---------- Step 5: Enter Units and IxF ----------
-st.markdown("## Step 5: Enter Units and Ix F Scores")
+st.markdown("<h2 style='font-size:26px;'>Step 5: Enter Units and IxF Scores</h2>", unsafe_allow_html=True)
 unit_input = st.text_area("Paste Units (e.g., Unit Name, I x F Score)", 
     value="""Gastrointestinal and Hepatobiliary, 143\nRenal and Genitourinary, 101\nEndocrine Disorders, 83\nRheumatology and Connective Tissue, 34""")
 
@@ -82,7 +82,7 @@ unit_df["Weightage %"] = ((unit_df["IxF"] / total_ixf) * 100).round(0)
 unit_df["Marks"] = ((unit_df["Weightage %"] * total_marks) / 100).round(0).astype(int)
 
 # ---------- Step 6: Manual Grid Entry ----------
-st.markdown("## Step 6: Manual Grid Entry")
+st.markdown("<h2 style='font-size:26px;'>Step 6: Manual Grid Entry</h2>", unsafe_allow_html=True)
 grid_columns = ["MCQ-R", "MCQ-U", "MCQ-A", "SAQ-R", "SAQ-U", "SAQ-A", "LAQ-R", "LAQ-U", "LAQ-A"]
 grid_template = pd.DataFrame(0, index=unit_df["Unit"], columns=grid_columns)
 edited_grid = st.data_editor(grid_template.copy(), use_container_width=True, num_rows="dynamic")
