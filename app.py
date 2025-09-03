@@ -21,7 +21,6 @@ st.markdown("<h2 style='font-size:26px;'>Step 1: Total Marks for Theory Paper</h
 total_marks = st.number_input("Enter Total Marks", min_value=1, value=100)
 
 # ---------- Step 2: Question Type Distribution ----------
-st.markdown("<h2 style='font-size:26px;'>Step 2: Question Type Distribution (%)</h2>", unsafe_allow_html=True
 st.markdown("## Step 2: Question Type Distribution (%) ")
 section_input = st.text_area("Paste section data (e.g., MCQ, 30)", value="MCQ, 30\nSAQ, 30\nLAQ, 40")
 
