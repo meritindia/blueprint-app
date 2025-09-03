@@ -108,6 +108,7 @@ st.markdown("<style>div[data-testid=stDataFrame] td { font-size: 16px; }</style>
 # ---------- Footer ----------
 st.markdown("---")
 st.markdown(
-    "<p style='font-size:16px; color:gray;'>© 2025 MERIT India. All rights reserved. | Reference: CBME Guidelines & Medical Council Norms</p>",
+st.markdown(
+    "<p style='font-size:16px; color:gray;'>© 2025 MERIT India. All rights reserved. | Reference: Kumar, P., Chaudhary, N., Kokane, A.M. et al. Designing a summative assessment blueprint in community medicine: an expert consensus approach at All India Institute of Medical Sciences. <i>BMC Med Educ</i> 24, 1539 (2024). <a href='https://doi.org/10.1186/s12909-024-06365-3' target='_blank'>https://doi.org/10.1186/s12909-024-06365-3</a></p>",
     unsafe_allow_html=True
 )
