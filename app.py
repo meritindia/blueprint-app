@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-from io import BytesIO
 from fpdf import FPDF
 import base64
 
@@ -65,26 +64,28 @@ unit_df["IxF"] = unit_df["IxF"].astype(float)
 unit_df["Weightage %"] = round((unit_df["IxF"] / unit_df["IxF"].sum()) * 100)
 unit_df["Marks"] = round((unit_df["Weightage %"] / 100) * total_marks)
 
-# Step 5: Combined Grid (Entry + Output)
-st.subheader("Step 5: Combined Grid for Entry and Output")
+# Step 5: Combined Grid
+st.subheader("Step 5: Enter Blueprint Grid")
 grid_cols = [f"{sec}-{dom}" for sec in ["MCQ", "SAQ", "LAQ"] for dom in ["R", "U", "A"]]
-full_grid = pd.DataFrame(index=unit_df["Unit"], columns=grid_cols)
-full_grid = full_grid.fillna(0).astype(int)
+grid_data = pd.DataFrame(index=unit_df["Unit"], columns=grid_cols)
+grid_data = grid_data.fillna(0).astype(int)
 
-edited_df = pd.concat([unit_df.set_index("Unit"), full_grid], axis=1)
-edited_df = st.data_editor(edited_df, use_container_width=True, key="combined_grid")
+# Merge with unit info for editable grid
+full_grid = pd.concat([unit_df.set_index("Unit"), grid_data], axis=1)
+full_grid = st.data_editor(full_grid, use_container_width=True, key="editable_grid")
 
 # Step 6: Add Grid Total
-edited_df["Grid Total"] = edited_df[grid_cols].sum(axis=1)
+full_grid["Grid Total"] = full_grid[grid_cols].sum(axis=1)
 
-# Display Final Blueprint
-st.subheader("Generated Blueprint Table")
-st.dataframe(edited_df.reset_index(), use_container_width=True)
+# Display Final Table
+st.subheader("Final Blueprint Table")
+st.dataframe(full_grid.reset_index(), use_container_width=True)
 
 # CSV Download
 def convert_df_csv(df):
     return df.to_csv(index=False).encode('utf-8')
-csv_data = convert_df_csv(edited_df.reset_index())
+
+csv_data = convert_df_csv(full_grid.reset_index())
 st.download_button("📥 Download as CSV", csv_data, "blueprint_grid.csv", "text/csv")
 
 # PDF Export
@@ -94,29 +95,31 @@ def export_to_pdf(df):
     pdf.add_page()
     pdf.set_font("Arial", size=8)
 
-    # Dynamic column widths
+    # Set dynamic widths (clip max width per col)
     col_widths = []
     for col in df.columns:
         max_content_width = max(df[col].astype(str).apply(len).max(), len(str(col)))
-        col_widths.append(min(max_content_width * 2.5, 30))
+        col_widths.append(min(max_content_width * 2.5, 35))  # max width 35
     row_height = 8
 
+    # Header
     for i, col in enumerate(df.columns):
         pdf.cell(col_widths[i], row_height, str(col)[:20], border=1, align='C')
     pdf.ln(row_height)
 
+    # Rows
     for _, row in df.iterrows():
         for i, val in enumerate(row):
             pdf.cell(col_widths[i], row_height, str(val), border=1, align='C')
         pdf.ln(row_height)
 
-    pdf_bytes = pdf.output(dest='S').encode('latin-1')
-    b64 = base64.b64encode(pdf_bytes).decode('utf-8')
-    href = f'<a href="data:application/pdf;base64,{b64}" download="blueprint_grid.pdf">📥 Download as PDF</a>'
-    return href
+    pdf_output = pdf.output(dest='S').encode('latin-1')
+    b64 = base64.b64encode(pdf_output).decode('utf-8')
+    link = f'<a href="data:application/pdf;base64,{b64}" download="blueprint_grid.pdf">📥 Download as PDF</a>'
+    return link
 
 st.subheader("📄 Export to PDF")
-st.markdown(export_to_pdf(edited_df.reset_index()), unsafe_allow_html=True)
+st.markdown(export_to_pdf(full_grid.reset_index()), unsafe_allow_html=True)
 
 # Footer
 st.markdown("---")
