@@ -9,11 +9,11 @@ col1, col2 = st.columns([1, 8])
 with col1:
     st.image("logo.jpg", width=100)
 with col2:
-    st.markdown("<h1 style='font-size:30px; color:#004466;'>Blueprint Generator - MERIT India</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='font-size:24px; color:#004466;'>Blueprint Generator - MERIT India</h1>", unsafe_allow_html=True)
     st.markdown("<p style='font-size:18px; color:#444;'>A tool to ensure balanced assessment design in medical education</p>", unsafe_allow_html=True)
 
 # Support
-st.markdown("<p style='font-size:16px; color:#666;'>For queries, contact: <a href='mailto:support@meritindia.org'>support@meritindia.org</a></p>", unsafe_allow_html=True)
+st.markdown("<p style='font-size:18px; color:#666;'>For queries, contact: <a href='mailto:support@meritindia.org'>support@meritindia.org</a></p>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ---------- Step 1: Total Marks ----------
