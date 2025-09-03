@@ -1,108 +1,126 @@
 import streamlit as st
 import pandas as pd
+from fpdf import FPDF
 import base64
 
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="Assessment Blueprint Generator", layout="wide")
 
-# Logo and Title
-col1, col2 = st.columns([1, 15])
+# Title and Logo
+col1, col2 = st.columns([1, 10])
 with col1:
     st.image("logo.jpg", width=80)
 with col2:
     st.markdown("""
-        <h2 style='font-size: 30px; margin-bottom: 0;'>AI-Enabled Blueprint Generator</h2>
-        <p style='margin-top: 0; font-size: 16px;'>A vital tool for systematic question paper design in medical education</p>
-        <p style='font-size: 12px; color: gray;'>Support: support@meritindia.org</p>
+        <h1 style='font-size: 36px;'>Blueprint Generator - MERIT India</h1>
+        <p style='font-size: 16px; color: gray;'>Blueprints are essential for mapping assessments to curriculum objectives in medical education.</p>
+        <p style='font-size: 14px; color: #999;'>Support: <a href='mailto:support@meritindia.org'>support@meritindia.org</a></p>
     """, unsafe_allow_html=True)
 
-# Step 1
-st.markdown("""<h4 style='margin-top: 30px;'>Step 1: Total Marks for Theory Paper</h4>""", unsafe_allow_html=True)
-total_marks = st.number_input("Enter Total Marks", min_value=1, value=100)
+st.markdown("""
+<hr>
+<p style='font-size: 18px;'>This app helps you build a subject-wise assessment blueprint. Define section-wise weightage, cognitive domain splits, and manually enter distribution in a single unified grid.</p>
+""", unsafe_allow_html=True)
 
-# Step 2
-st.markdown("""<h4 style='margin-top: 30px;'>Step 2: Section-wise Distribution (%)</h4>""", unsafe_allow_html=True)
-section_input = st.text_area("Paste section data (e.g., MCQ,30\nSAQ,30\nLAQ,40)", height=100)
-section_data = []
-if section_input:
-    for line in section_input.split("\n"):
-        parts = line.split(",")
-        if len(parts) == 2:
-            section_data.append({"Section": parts[0].strip(), "% Weightage": float(parts[1].strip())})
-section_df = pd.DataFrame(section_data)
-if not section_df.empty:
-    section_df["Marks Allocated"] = section_df["% Weightage"] * total_marks / 100
-    st.dataframe(section_df, use_container_width=True)
+# Step 1: Total Marks
+st.subheader("Step 1: Total Marks for Theory Paper")
+total_marks = st.number_input("Enter Total Marks", value=100)
 
-# Step 3
-st.markdown("""<h4 style='margin-top: 30px;'>Step 3: Cognitive Domain Distribution (%)</h4>""", unsafe_allow_html=True)
-cognitive_input = st.text_area("Paste cognitive distribution per section (e.g., MCQ,30,30,40\nSAQ,30,30,40\nLAQ,30,30,40)", height=100)
-cognitive_data = []
-if cognitive_input:
-    for line in cognitive_input.split("\n"):
-        parts = line.split(",")
-        if len(parts) == 4:
-            cognitive_data.append({"Section": parts[0].strip(), "Recall %": float(parts[1]), "Understand %": float(parts[2]), "Apply %": float(parts[3])})
-cognitive_df = pd.DataFrame(cognitive_data)
-if not cognitive_df.empty:
-    st.dataframe(cognitive_df, use_container_width=True)
+# Step 2: Section-wise Distribution (%)
+st.subheader("Step 2: Section-wise Distribution (%)")
+col1, col2, col3 = st.columns(3)
+with col1:
+    mcq_pct = st.number_input("MCQ %", value=30)
+with col2:
+    saq_pct = st.number_input("SAQ %", value=30)
+with col3:
+    laq_pct = st.number_input("LAQ %", value=40)
 
-# Step 4
-st.markdown("""<h4 style='margin-top: 30px;'>Step 4: Difficulty Level Distribution (%)</h4>""", unsafe_allow_html=True)
-difficulty_input = st.text_area("Paste difficulty levels per section (e.g., MCQ,30,40,30\nSAQ,30,40,30\nLAQ,30,40,30)", height=100)
-difficulty_data = []
-if difficulty_input:
-    for line in difficulty_input.split("\n"):
-        parts = line.split(",")
-        if len(parts) == 4:
-            difficulty_data.append({"Section": parts[0].strip(), "Easy %": float(parts[1]), "Moderate %": float(parts[2]), "Difficult %": float(parts[3])})
-difficulty_df = pd.DataFrame(difficulty_data)
-if not difficulty_df.empty:
-    st.dataframe(difficulty_df, use_container_width=True)
+mcq_marks = round(mcq_pct * total_marks / 100)
+saq_marks = round(saq_pct * total_marks / 100)
+laq_marks = round(laq_pct * total_marks / 100)
 
-# Step 5
-st.markdown("""<h4 style='margin-top: 30px;'>Step 5: Enter Units and I x F Scores</h4>""", unsafe_allow_html=True)
-unit_input = st.text_area("Paste unit data (e.g., Unit Name, I x F Score)", height=150)
-unit_data = []
-if unit_input:
-    for line in unit_input.split("\n"):
-        parts = line.split(",")
-        if len(parts) == 2:
-            unit_data.append((parts[0].strip(), float(parts[1].strip())))
-unit_df = pd.DataFrame(unit_data, columns=["Unit", "IxF"])
+# Step 3: Cognitive Domain Distribution (%)
+st.subheader("Step 3: Cognitive Domain Distribution (%) for Each Question Type")
+cd_perc = {}
+cd_marks = {}
+for sec, sec_marks in zip(["MCQ", "SAQ", "LAQ"], [mcq_marks, saq_marks, laq_marks]):
+    st.markdown(f"<b>{sec} Distribution</b>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        r = st.number_input(f"Recall % in {sec}", value=30, key=f"r_{sec}")
+    with col2:
+        u = st.number_input(f"Understand % in {sec}", value=30, key=f"u_{sec}")
+    with col3:
+        a = st.number_input(f"Apply % in {sec}", value=40, key=f"a_{sec}")
+    cd_perc[sec] = [r, u, a]
+    cd_marks[sec] = [round(r * sec_marks / 100), round(u * sec_marks / 100), round(a * sec_marks / 100)]
 
-# Calculate weights
-if not unit_df.empty:
-    unit_df["Weightage %"] = unit_df["IxF"] / unit_df["IxF"].sum() * 100
-    unit_df["Marks"] = (unit_df["Weightage %"] * total_marks / 100).round(0)
+# Step 4: Enter Units
+st.subheader("Step 4: Enter Units and I x F Scores")
+unit_data = st.text_area("Paste unit data (e.g., Unit Name, I x F Score)",
+"""Gastrointestinal and Hepatobiliary, 143
+Renal and Genitourinary, 101
+Endocrine Disorders, 83
+Rheumatology and Connective Tissue, 34""")
 
-# Step 6: Combined Grid Entry
-st.markdown("""<h4 style='margin-top: 30px;'>Step 6: Manual Grid Entry (Combined)</h4>""", unsafe_allow_html=True)
-question_types = ["MCQ-R", "MCQ-U", "MCQ-A", "SAQ-R", "SAQ-U", "SAQ-A", "LAQ-R", "LAQ-U", "LAQ-A"]
-empty_data = {"Unit": unit_df["Unit"]}
-for q in question_types:
-    empty_data[q] = [0] * len(unit_df)
-grid_df = pd.DataFrame(empty_data)
+unit_rows = [row.strip().split(',') for row in unit_data.strip().split('\n') if len(row.strip().split(',')) == 2]
+unit_df = pd.DataFrame(unit_rows, columns=["Unit", "IxF"])
+unit_df["IxF"] = unit_df["IxF"].astype(float)
+unit_df["Weightage %"] = round((unit_df["IxF"] / unit_df["IxF"].sum()) * 100)
+unit_df["Marks"] = round((unit_df["Weightage %"] / 100) * total_marks)
 
-edited_df = st.data_editor(grid_df, use_container_width=True, key="manual_grid")
+# Step 5: Combined Grid
+st.subheader("Step 5: Enter Blueprint Grid")
+grid_cols = [f"{sec}-{dom}" for sec in ["MCQ", "SAQ", "LAQ"] for dom in ["R", "U", "A"]]
+grid_data = pd.DataFrame(index=unit_df["Unit"], columns=grid_cols)
+grid_data = grid_data.fillna(0).astype(int)
 
-# Final Blueprint Table
-st.markdown("""<h4 style='margin-top: 30px;'>Generated Blueprint Table</h4>""", unsafe_allow_html=True)
-blueprint_df = unit_df.merge(edited_df, on="Unit")
-blueprint_df["Grid Total"] = blueprint_df[question_types].sum(axis=1)
+full_grid = pd.concat([unit_df.set_index("Unit"), grid_data], axis=1)
+full_grid = st.data_editor(full_grid, use_container_width=True, key="editable_grid")
 
-try:
-    st.dataframe(blueprint_df, use_container_width=True)
+# Step 6: Grid Totals
+full_grid["Grid Total"] = full_grid[grid_cols].sum(axis=1)
 
-    # CSV download
-    csv = blueprint_df.to_csv(index=False).encode("utf-8")
-    st.download_button("Download as CSV", csv, "blueprint_table.csv", "text/csv")
-except Exception as e:
-    st.error(f"Error rendering table: {e}")
+# Display Final Table
+st.subheader("Final Blueprint Table")
+st.dataframe(full_grid.reset_index(), use_container_width=True)
+
+# CSV Download
+def convert_df_csv(df):
+    return df.to_csv(index=False).encode('utf-8')
+
+csv_data = convert_df_csv(full_grid.reset_index())
+st.download_button("📥 Download as CSV", csv_data, "blueprint_grid.csv", "text/csv")
+
+# PDF Export
+def export_to_pdf(df):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=10)
+    pdf.add_page()
+    pdf.set_font("Arial", size=8)
+
+    col_widths = [min(max(df[col].astype(str).apply(len).max(), len(str(col))) * 2.5, 35) for col in df.columns]
+    row_height = 8
+
+    for i, col in enumerate(df.columns):
+        pdf.cell(col_widths[i], row_height, str(col)[:20], border=1, align='C')
+    pdf.ln(row_height)
+
+    for _, row in df.iterrows():
+        for i, val in enumerate(row):
+            pdf.cell(col_widths[i], row_height, str(val), border=1, align='C')
+        pdf.ln(row_height)
+
+    pdf_output = pdf.output(dest='S').encode('latin-1')
+    b64 = base64.b64encode(pdf_output).decode('utf-8')
+    return f'<a href="data:application/pdf;base64,{b64}" download="blueprint_grid.pdf">📥 Download as PDF</a>'
+
+st.subheader("📄 Export to PDF")
+st.markdown(export_to_pdf(full_grid.reset_index()), unsafe_allow_html=True)
 
 # Footer
 st.markdown("""
 ---
-<p style='text-align: center; font-size: 12px;'>
-    © 2025 MERIT INDIA. All rights reserved. | Support: support@meritindia.org
-</p>
+<p style='font-size: 13px; text-align: center;'>Made by <b>MERIT India</b> | Logo © All rights reserved | Contact: <a href='mailto:support@meritindia.org'>support@meritindia.org</a></p>
+<p style='font-size: 12px; text-align: center;'>Reference: National Medical Council guidelines on assessment blueprinting (NMC 2023)</p>
 """, unsafe_allow_html=True)
