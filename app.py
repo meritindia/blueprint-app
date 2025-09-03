@@ -108,6 +108,6 @@ st.markdown("<style>div[data-testid=stDataFrame] td { font-size: 16px; }</style>
 # ---------- Footer ----------
 st.markdown("---")
 st.markdown(
-    "<p style='font-size:14px; color:gray;'>© 2025 MERIT India. All rights reserved. | Reference: CBME Guidelines & Medical Council Norms</p>",
+    "<p style='font-size:16px; color:gray;'>© 2025 MERIT India. All rights reserved. | Reference: CBME Guidelines & Medical Council Norms</p>",
     unsafe_allow_html=True
 )
