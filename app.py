@@ -13,7 +13,7 @@ with col2:
     st.markdown("<p style='font-size:18px; color:#444;'>A tool to ensure balanced assessment design in medical education</p>", unsafe_allow_html=True)
 
 # Support
-st.markdown("<p style='font-size:18px; color:#666;'>For queries, contact: <a href='mailto:support@meritindia.org'>support@meritindia.org</a></p>", unsafe_allow_html=True)
+st.markdown("<p style='font-size:14px; color:#666;'>For queries, contact: <a href='mailto:support@meritindia.org'>support@meritindia.org</a></p>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ---------- Step 1: Total Marks ----------
