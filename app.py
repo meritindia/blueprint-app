@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from fpdf import FPDF
+from io import BytesIO
 import base64
 
 st.set_page_config(page_title="Assessment Blueprint Generator", layout="wide")
@@ -34,10 +34,19 @@ mcq_marks = round(mcq_pct * total_marks / 100)
 saq_marks = round(saq_pct * total_marks / 100)
 laq_marks = round(laq_pct * total_marks / 100)
 
+section_df = pd.DataFrame({
+    "Section": ["MCQ", "SAQ", "LAQ"],
+    "% Weightage": [mcq_pct, saq_pct, laq_pct],
+    "Marks Allocated": [mcq_marks, saq_marks, laq_marks]
+})
+st.dataframe(section_df, use_container_width=True)
+
 # Step 3: Cognitive Domain Distribution (%)
 st.subheader("Step 3: Cognitive Domain Distribution (%) for Each Question Type")
+
 cd_perc = {}
 cd_marks = {}
+
 for sec, sec_marks in zip(["MCQ", "SAQ", "LAQ"], [mcq_marks, saq_marks, laq_marks]):
     st.markdown(f"**{sec} Distribution**")
     col1, col2, col3 = st.columns(3)
@@ -50,76 +59,53 @@ for sec, sec_marks in zip(["MCQ", "SAQ", "LAQ"], [mcq_marks, saq_marks, laq_mark
     cd_perc[sec] = [r, u, a]
     cd_marks[sec] = [round(r * sec_marks / 100), round(u * sec_marks / 100), round(a * sec_marks / 100)]
 
-# Step 4: Enter Units
-st.subheader("Step 4: Enter Units and I x F Scores")
+cdm_df = pd.DataFrame(cd_marks, index=["Recall", "Understand", "Apply"])
+st.subheader("Step 4: Cognitive Domain Marks (Auto-calculated)")
+st.dataframe(cdm_df, use_container_width=True)
+
+# Step 5: Unit Data Input
+st.subheader("Step 5: Enter Units and I x F Scores")
 unit_data = st.text_area("Paste unit data (e.g., Unit Name, I x F Score)",
 """Gastrointestinal and Hepatobiliary, 143
 Renal and Genitourinary, 101
 Endocrine Disorders, 83
 Rheumatology and Connective Tissue, 34""")
 
-unit_rows = [row.strip().split(',') for row in unit_data.strip().split('\n') if len(row.strip().split(',')) == 2]
+unit_rows = [row.strip().split(',') for row in unit_data.strip().split('\n') if ',' in row]
 unit_df = pd.DataFrame(unit_rows, columns=["Unit", "IxF"])
 unit_df["IxF"] = unit_df["IxF"].astype(float)
 unit_df["Weightage %"] = round((unit_df["IxF"] / unit_df["IxF"].sum()) * 100)
 unit_df["Marks"] = round((unit_df["Weightage %"] / 100) * total_marks)
 
-# Step 5: Combined Grid
-st.subheader("Step 5: Enter Blueprint Grid")
-grid_cols = [f"{sec}-{dom}" for sec in ["MCQ", "SAQ", "LAQ"] for dom in ["R", "U", "A"]]
-grid_data = pd.DataFrame(index=unit_df["Unit"], columns=grid_cols)
-grid_data = grid_data.fillna(0).astype(int)
+# Step 6: Faculty Grid Entry
+st.subheader("Step 6: Manual Grid Entry")
+grid_template = pd.DataFrame(index=unit_df["Unit"], columns=[
+    "MCQ-R", "MCQ-U", "MCQ-A",
+    "SAQ-R", "SAQ-U", "SAQ-A",
+    "LAQ-R", "LAQ-U", "LAQ-A"
+])
+grid_template = grid_template.fillna(0).astype(int)
+edited_grid = st.data_editor(grid_template, use_container_width=True, key="grid_editor")
 
-# Merge with unit info for editable grid
-full_grid = pd.concat([unit_df.set_index("Unit"), grid_data], axis=1)
-full_grid = st.data_editor(full_grid, use_container_width=True, key="editable_grid")
+# Calculations
+total_row = edited_grid.sum().to_frame().T
+unit_totals = edited_grid.sum(axis=1)
 
-# Step 6: Add Grid Total
-full_grid["Grid Total"] = full_grid[grid_cols].sum(axis=1)
+# Align index properly before assigning
+unit_totals = unit_totals.reindex(unit_df["Unit"])
+blueprint_df = pd.concat([unit_df.set_index("Unit"), edited_grid], axis=1)
+blueprint_df["Grid Total"] = unit_totals
 
 # Display Final Table
-st.subheader("Final Blueprint Table")
-st.dataframe(full_grid.reset_index(), use_container_width=True)
+st.subheader("Generated Blueprint Table")
+st.dataframe(blueprint_df.reset_index(), use_container_width=True)
 
 # CSV Download
 def convert_df_csv(df):
     return df.to_csv(index=False).encode('utf-8')
 
-csv_data = convert_df_csv(full_grid.reset_index())
+csv_data = convert_df_csv(blueprint_df.reset_index())
 st.download_button("📥 Download as CSV", csv_data, "blueprint_grid.csv", "text/csv")
-
-# PDF Export
-def export_to_pdf(df):
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=10)
-    pdf.add_page()
-    pdf.set_font("Arial", size=8)
-
-    # Set dynamic widths (clip max width per col)
-    col_widths = []
-    for col in df.columns:
-        max_content_width = max(df[col].astype(str).apply(len).max(), len(str(col)))
-        col_widths.append(min(max_content_width * 2.5, 35))  # max width 35
-    row_height = 8
-
-    # Header
-    for i, col in enumerate(df.columns):
-        pdf.cell(col_widths[i], row_height, str(col)[:20], border=1, align='C')
-    pdf.ln(row_height)
-
-    # Rows
-    for _, row in df.iterrows():
-        for i, val in enumerate(row):
-            pdf.cell(col_widths[i], row_height, str(val), border=1, align='C')
-        pdf.ln(row_height)
-
-    pdf_output = pdf.output(dest='S').encode('latin-1')
-    b64 = base64.b64encode(pdf_output).decode('utf-8')
-    link = f'<a href="data:application/pdf;base64,{b64}" download="blueprint_grid.pdf">📥 Download as PDF</a>'
-    return link
-
-st.subheader("📄 Export to PDF")
-st.markdown(export_to_pdf(full_grid.reset_index()), unsafe_allow_html=True)
 
 # Footer
 st.markdown("---")
