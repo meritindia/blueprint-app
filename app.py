@@ -83,18 +83,21 @@ st.subheader("Step 6: Manual Grid Entry")
 grid_template = pd.DataFrame(index=unit_df["Unit"], columns=[
     "MCQ-R", "MCQ-U", "MCQ-A",
     "SAQ-R", "SAQ-U", "SAQ-A",
-    "LAQ-R", "LAQ-U", "LAQ-A"])\n
-grid_template.fillna(0, inplace=True)
-grid_template = grid_template.astype(int)
+    "LAQ-R", "LAQ-U", "LAQ-A"
+])
+grid_template = grid_template.fillna(0).astype(int)
 edited_grid = st.data_editor(grid_template, use_container_width=True, key="grid_editor")
 
-# Merge and Calculate Totals
-unit_totals = edited_grid.sum(axis=1).reindex(unit_df["Unit"])
+# Calculations
+total_row = edited_grid.sum().to_frame().T
+unit_totals = edited_grid.sum(axis=1)
+
+# Merged Blueprint Table
 blueprint_df = pd.concat([unit_df.set_index("Unit"), edited_grid], axis=1)
 blueprint_df["Grid Total"] = unit_totals
 blueprint_df.reset_index(inplace=True)
 
-# Display Combined Table
+# Display Final Table
 st.subheader("Generated Blueprint Table (Combined View)")
 st.dataframe(blueprint_df, use_container_width=True)
 
@@ -108,20 +111,21 @@ st.download_button("📥 Download as CSV", csv_data, "blueprint_grid.csv", "text
 # PDF Download
 st.subheader("📄 Export to PDF")
 def export_to_pdf(df):
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=10)
+    pdf = FPDF(orientation='L', unit='mm', format='A4')
     pdf.add_page()
-    pdf.set_font("Arial", size=8)
-    col_widths = [40] + [15] * (len(df.columns) - 1)
-    row_height = 8
+    pdf.set_font("Arial", size=7)
+    col_width = 277 / len(df.columns)  # full width of A4 in landscape
+    row_height = 6
 
-    for i, col in enumerate(df.columns):
-        pdf.cell(col_widths[i], row_height, str(col)[:15], border=1, align='C')
+    # Header
+    for col in df.columns:
+        pdf.cell(col_width, row_height, str(col), border=1)
     pdf.ln(row_height)
 
+    # Rows
     for _, row in df.iterrows():
-        for i, val in enumerate(row):
-            pdf.cell(col_widths[i], row_height, str(val), border=1, align='C')
+        for item in row:
+            pdf.cell(col_width, row_height, str(item), border=1)
         pdf.ln(row_height)
 
     output = BytesIO()
