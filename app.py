@@ -17,7 +17,7 @@ st.markdown("<p style='font-size:18px; color:#666;'>For queries, contact: <a hre
 st.markdown("---")
 
 # ---------- Step 1: Total Marks ----------
-st.markdown("## Step 1: Total Marks for Theory Paper")
+st.markdown("<h2 style='font-size:26px;'>Step 1: Total Marks for Theory Paper</h2>", unsafe_allow_html=True)
 total_marks = st.number_input("Enter Total Marks", min_value=1, value=100)
 
 # ---------- Step 2: Question Type Distribution ----------
