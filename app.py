@@ -1,112 +1,91 @@
 import streamlit as st
 import pandas as pd
-from io import BytesIO
-import base64
 
-st.set_page_config(page_title="Assessment Blueprint Generator", layout="wide")
+st.set_page_config(layout="wide")
 
-# Title and Logo
-col1, col2 = st.columns([1, 10])
-with col1:
-    st.image("logo.jpg", width=80)
-with col2:
-    st.title("Blueprint Generator - MERIT India")
+st.markdown("<h1 style='font-size:32px;'>Blueprint Generator</h1>", unsafe_allow_html=True)
 
-st.markdown("""
-This app helps you build a subject-wise assessment blueprint. Define section-wise weightage, cognitive domain splits, and manually enter distribution.
-""")
+# ---------- Step 1: Total Marks ----------
+st.markdown("## Step 1: Total Marks for Theory Paper")
+total_marks = st.number_input("Enter Total Marks", min_value=1, value=100)
 
-# Step 1: Total Marks
-st.subheader("Step 1: Total Marks for Theory Paper")
-total_marks = st.number_input("Enter Total Marks", value=100)
+# ---------- Step 2: Section-wise Distribution ----------
+st.markdown("## Step 2: Section-wise Distribution (%) ")
+section_input = st.text_area("Paste section data (e.g., MCQ, 30)", value="MCQ, 30\nSAQ, 30\nLAQ, 40")
 
-# Step 2: Section-wise Distribution (%)
-st.subheader("Step 2: Section-wise Distribution (%)")
-col1, col2, col3 = st.columns(3)
-with col1:
-    mcq_pct = st.number_input("MCQ %", value=30)
-with col2:
-    saq_pct = st.number_input("SAQ %", value=30)
-with col3:
-    laq_pct = st.number_input("LAQ %", value=40)
+try:
+    section_lines = [line for line in section_input.splitlines() if line.strip() != ""]
+    section_data = [line.split(',') for line in section_lines]
+    section_df = pd.DataFrame(section_data, columns=["Section", "% Weightage"])
+    section_df["% Weightage"] = pd.to_numeric(section_df["% Weightage"], errors='coerce')
+    section_df["Marks Allocated"] = (section_df["% Weightage"] * total_marks / 100).round(0).astype(int)
+    st.dataframe(section_df, use_container_width=True)
+except:
+    st.warning("Please enter valid section-wise distribution data.")
 
-mcq_marks = round(mcq_pct * total_marks / 100)
-saq_marks = round(saq_pct * total_marks / 100)
-laq_marks = round(laq_pct * total_marks / 100)
+# ---------- Step 3: Cognitive Domain Distribution ----------
+st.markdown("## Step 3: Cognitive Domain Distribution (%) for Each Question Type")
+cognitive_input = st.text_area("Paste cognitive distribution data (e.g., Recall in MCQ, 30)", 
+    value="""Recall in MCQ, 30\nUnderstand in MCQ, 30\nApply in MCQ, 40\nRecall in SAQ, 30\nUnderstand in SAQ, 30\nApply in SAQ, 40\nRecall in LAQ, 30\nUnderstand in LAQ, 30\nApply in LAQ, 40""")
 
-section_df = pd.DataFrame({
-    "Section": ["MCQ", "SAQ", "LAQ"],
-    "% Weightage": [mcq_pct, saq_pct, laq_pct],
-    "Marks Allocated": [mcq_marks, saq_marks, laq_marks]
-})
-st.dataframe(section_df, use_container_width=True)
+try:
+    cog_lines = [line for line in cognitive_input.splitlines() if line.strip() != ""]
+    cog_data = [line.split(',') for line in cog_lines]
+    cog_df = pd.DataFrame(cog_data, columns=["Domain", "% Weight"])
+    cog_df["% Weight"] = pd.to_numeric(cog_df["% Weight"], errors='coerce')
+    st.dataframe(cog_df, use_container_width=True)
+except:
+    st.warning("Please enter valid cognitive domain distribution data.")
 
-# Step 3: Cognitive Domain Distribution (%)
-st.subheader("Step 3: Cognitive Domain Distribution (%) for Each Question Type")
+# ---------- Step 4: Derived Cognitive Table ----------
+st.markdown("## Step 4: Derived Cognitive Matrix")
+try:
+    cog_matrix = pd.DataFrame(index=['Recall', 'Understand', 'Apply'], columns=['MCQ', 'SAQ', 'LAQ'])
+    for _, row in cog_df.iterrows():
+        for level in cog_matrix.index:
+            if level in row["Domain"]:
+                for sec in cog_matrix.columns:
+                    if sec in row["Domain"]:
+                        cog_matrix.loc[level, sec] = row["% Weight"]
+    cog_matrix = cog_matrix.fillna(0).astype(int)
+    st.dataframe(cog_matrix, use_container_width=True)
+except:
+    st.warning("Cognitive Matrix generation failed.")
 
-cd_perc = {}
-cd_marks = {}
+# ---------- Step 5: Enter Units and IxF ----------
+st.markdown("## Step 5: Enter Units and Ix F Scores")
+st.caption("Paste unit data (e.g., Unit Name, I x F Score)")
+unit_input = st.text_area("Paste Units", value="""Gastrointestinal and Hepatobiliary, 143\nRenal and Genitourinary, 101\nEndocrine Disorders, 83\nRheumatology and Connective Tissue, 34""")
 
-for sec, sec_marks in zip(["MCQ", "SAQ", "LAQ"], [mcq_marks, saq_marks, laq_marks]):
-    st.markdown(f"**{sec} Distribution**")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        r = st.number_input(f"Recall % in {sec}", value=30, key=f"r_{sec}")
-    with col2:
-        u = st.number_input(f"Understand % in {sec}", value=30, key=f"u_{sec}")
-    with col3:
-        a = st.number_input(f"Apply % in {sec}", value=40, key=f"a_{sec}")
-    cd_perc[sec] = [r, u, a]
-    cd_marks[sec] = [round(r * sec_marks / 100), round(u * sec_marks / 100), round(a * sec_marks / 100)]
+unit_lines = [line for line in unit_input.splitlines() if line.strip() != ""]
+unit_data = [line.split(',') for line in unit_lines if ',' in line]
+unit_df = pd.DataFrame(unit_data, columns=["Unit", "IxF"])
+unit_df["IxF"] = pd.to_numeric(unit_df["IxF"], errors='coerce')
+unit_df = unit_df.dropna()
+unit_df["IxF"] = unit_df["IxF"].astype(int)
+total_ixf = unit_df["IxF"].sum()
+unit_df["Weightage %"] = ((unit_df["IxF"] / total_ixf) * 100).round(0)
+unit_df["Marks"] = ((unit_df["Weightage %"] * total_marks) / 100).round(0).astype(int)
 
-cdm_df = pd.DataFrame(cd_marks, index=["Recall", "Understand", "Apply"])
-st.subheader("Step 4: Cognitive Domain Marks (Auto-calculated)")
-st.dataframe(cdm_df, use_container_width=True)
+# ---------- Step 6: Manual Grid Entry ----------
+st.markdown("## Step 6: Manual Grid Entry")
+grid_columns = ["MCQ-R", "MCQ-U", "MCQ-A", "SAQ-R", "SAQ-U", "SAQ-A", "LAQ-R", "LAQ-U", "LAQ-A"]
+grid_template = pd.DataFrame(0, index=unit_df["Unit"], columns=grid_columns)
+styled_grid = st.data_editor(grid_template.copy(), use_container_width=True, num_rows="dynamic")
 
-# Step 5: Unit Data Input
-st.subheader("Step 5: Enter Units and I x F Scores")
-unit_data = st.text_area("Paste unit data (e.g., Unit Name, I x F Score)",
-"""Gastrointestinal and Hepatobiliary, 143
-Renal and Genitourinary, 101
-Endocrine Disorders, 83
-Rheumatology and Connective Tissue, 34""")
+# ---------- Step 7: Final Blueprint Generation ----------
+st.markdown("## Generated Blueprint Table")
+unit_totals = styled_grid.sum(axis=1)
+final_df = pd.concat([unit_df.set_index("Unit"), styled_grid], axis=1)
+final_df["Grid Total"] = unit_totals
+st.dataframe(final_df.reset_index(), use_container_width=True)
 
-unit_rows = [row.strip().split(',') for row in unit_data.strip().split('\n') if ',' in row]
-unit_df = pd.DataFrame(unit_rows, columns=["Unit", "IxF"])
-unit_df["IxF"] = unit_df["IxF"].astype(float)
-unit_df["Weightage %"] = round((unit_df["IxF"] / unit_df["IxF"].sum()) * 100)
-unit_df["Marks"] = round((unit_df["Weightage %"] / 100) * total_marks)
+# ---------- Step 8: CSV Export ----------
+st.download_button(
+    label="\U0001F4BE Download as CSV",
+    data=final_df.reset_index().to_csv(index=False).encode('utf-8'),
+    file_name="blueprint_grid.csv",
+    mime='text/csv'
+)
 
-# Step 6: Faculty Grid Entry
-st.subheader("Step 6: Manual Grid Entry")
-grid_template = pd.DataFrame(index=unit_df["Unit"], columns=[
-    "MCQ-R", "MCQ-U", "MCQ-A",
-    "SAQ-R", "SAQ-U", "SAQ-A",
-    "LAQ-R", "LAQ-U", "LAQ-A"
-])
-grid_template = grid_template.fillna(0).astype(int)
-edited_grid = st.data_editor(grid_template, use_container_width=True, key="grid_editor")
-
-# Calculations
-total_row = edited_grid.sum().to_frame().T
-unit_totals = edited_grid.sum(axis=1)
-
-# Align index properly before assigning
-unit_totals = unit_totals.reindex(unit_df["Unit"])
-blueprint_df = pd.concat([unit_df.set_index("Unit"), edited_grid], axis=1)
-blueprint_df["Grid Total"] = unit_totals
-
-# Display Final Table
-st.subheader("Generated Blueprint Table")
-st.dataframe(blueprint_df.reset_index(), use_container_width=True)
-
-# CSV Download
-def convert_df_csv(df):
-    return df.to_csv(index=False).encode('utf-8')
-
-csv_data = convert_df_csv(blueprint_df.reset_index())
-st.download_button("📥 Download as CSV", csv_data, "blueprint_grid.csv", "text/csv")
-
-# Footer
-st.markdown("---")
-st.markdown("Made by **MERIT India** | Logo © All rights reserved")
+st.markdown("<style>div[data-testid=stDataFrame] td { font-size: 16px; }</style>", unsafe_allow_html=True)
